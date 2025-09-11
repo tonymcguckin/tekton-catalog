@@ -1,0 +1,42 @@
+name: 'RefResolver'
+
+on:
+  push:
+    branches: [ "tkn_v1beta1" ]
+  pull_request:
+
+jobs:
+  refresolver:
+    name: 'RefResolver'
+    runs-on: ubuntu-latest
+    environment: production
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Import Secrets Manager secrets into job context
+      uses: ibmcloud/RefResolver@v1
+      with:
+        ibmcloud_apikey: ${{ secrets.IBMCLOUD_APIKEY }}
+        references: |
+          - ref://secrets-manager.us-south.Default.SM-1/default/x
+          - ref://secrets-manager.us-south.Default.SM-1/default/y
+          - ref://secrets-manager.us-south.Default.SM-1/default/z
+          - ref://secrets-manager.us-south.Default.SM-1/default/kv1
+
+    - name: Do some work using resolved secrets
+      run: |
+        # resolved secrets are automatically named using
+        # the original secret name, upper-cased / normalised
+        # hence `x` is available as $X
+        #       `x y` is available as $X_Y
+
+        RESOLVED_SECRET_X="${X}"
+        RESOLVED_SECRET_Y="${Y}"
+        RESOLVED_SECRET_Z="${Z}"
