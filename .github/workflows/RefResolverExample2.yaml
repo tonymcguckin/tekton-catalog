@@ -28,7 +28,7 @@ jobs:
           - ref://secrets-manager.us-south.Default.SM-1/default/x
           - ref://secrets-manager.us-south.Default.SM-1/default/y
           - ref://secrets-manager.us-south.Default.SM-1/default/z
-          - ref://secrets-manager.us-south.Default.SM-1/default/kv1
+          - ref://secrets-manager.us-south.Default.SM-1/default/kv
 
     - name: Do some work using resolved secrets
       run: |
@@ -40,3 +40,5 @@ jobs:
         RESOLVED_SECRET_X="${X}"
         RESOLVED_SECRET_Y="${Y}"
         RESOLVED_SECRET_Z="${Z}"
+
+        RESOLVED_SECRET_KV=$( echo ${KV} | jq -r . )
