@@ -1,0 +1,84 @@
+name: 'RefResolver'
+
+on:
+  push:
+    branches: [ "tkn_v1beta1" ]
+  pull_request:
+
+jobs:
+  refresolver:
+    name: 'RefResolver'
+    runs-on: ubuntu-latest
+    environment: production
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install IBM Cloud RefResolver CLI
+      uses: ibmcloud/RefResolver@v1
+      with:
+        ibmcloud_apikey: ${{ secrets.IBMCLOUD_APIKEY }}
+
+    - name: Resolve a secret stored in an IBM Cloud Secrets Manager instance
+      run: |
+        # SECRET_REF will be redacted *** in logs as it is a secret type
+        #   It has a secret reference as it's value:
+        #   "ref://secrets-manager.us-south.Default.SM-1/default/foo"
+
+        echo "Secret reference : $SECRET_REF" # redacted in log output ***
+
+        # The literal value of the `value` property of the
+        #   secret will be returned implicitly by default
+        #   this is purely a convenience ...
+
+        RESOLVED_SECRET_VALUE=$( RefResolver --resolve "${SECRET_REF}" )
+
+        # ^^ resolved value will be the literal value of secret foo ^^
+
+        # For more advanced flow control, the raw resolved entry
+        #   can be returned as-is using --raw flag ...
+
+        RESOLVED_SECRET_OBJECT=$( RefResolver --raw --resolve "${VAR_SECRET_REF}" )
+
+        # The resolved result will be a json object with
+        #   `code`, `message`, `value`, `transaction-id`, etc
+        #   to enable advanced flow control / error checking ...
+        
+        RESOLVED_STATUS_CODE="$( echo $RESOLVED_SECRET_OBJECT | jq -r .code )"
+        RESOLVED_MESSAGE="$( echo $RESOLVED_SECRET_OBJECT | jq -r .message )"
+        RESOLVED_VALUE="$( echo $RESOLVED_SECRET_OBJECT | jq -r .value )"
+
+        RESOLVED_SECRET_OBJECT=$( RefResolver --raw --resolve "${STATIC_SECRET_REF}" )
+        RESOLVED_VALUE="$( echo $RESOLVED_SECRET_OBJECT | jq -r .value )"
+
+        # Resolve a batch of refs ...
+
+        REF1="ref://secrets-manager.us-south.Default.SM-1/default/x"
+        REF2="ref://secrets-manager.us-south.Default.SM-1/default/y"
+        REF3="ref://secrets-manager.us-south.Default.SM-1/default/z"
+
+        RESOLVED_SECRETS_BATCH=$( RefResolver --resolve-batch "[ ${x}, ${y}, ${z} ]" )
+        RESOLVED_SECRETS_BATCH_VALUES="$( echo $RESOLVED_SECRETS_BATCH | jq -r . )"
+
+      env:
+        SECRET_REF: ${{ secrets.SECRET_REF }}
+        VAR_SECRET_REF: ${{ vars.VAR_SECRET_REF }}
+        STATIC_SECRET_REF: "ref://secrets-manager.us-south.Default.SM-1/default/foo"
+
+    - name: Resolve properties stored in a IBM Cloud Project instance
+      run: |
+        echo "Project reference : $PROJECT_REF"
+        echo "Project reference : $STATIC_PROJECT_REF"
+
+        PROJECT_VAL=$( RefResolver --resolve "${PROJECT_REF}" )
+        PROJECT_VAL=$( RefResolver --resolve "${STATIC_PROJECT_REF}" )
+        PROJECT_VAL=$( RefResolver --raw --resolve "${STATIC_PROJECT_REF}" )
+      env:
+        PROJECT_REF: ${{ vars.PROJECT_REF }}
+        STATIC_PROJECT_REF: "ref://project.big-yin/configs/static-website-ian-test/outputs/git_repo_url"
