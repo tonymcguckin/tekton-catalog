@@ -1,0 +1,43 @@
+name: 'RefResolver'
+
+on:
+  push:
+    branches: [ "tkn_v1beta1" ]
+  pull_request:
+
+jobs:
+  refresolver:
+    name: 'RefResolver'
+    runs-on: ubuntu-latest
+    environment: production
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - name: Resolve references for this workflow as outputs
+      uses: ibmcloud/RefResolver@vl
+      id: resolver-step # name the step so outputs can be referenced
+      with:
+        ibmcloud_apikey: ${{ secrets.IBMCLOUD_APIKEY }}
+        exportEnv: false
+        secrets:
+        - ref://secrets-manager.us-south.Default.SM-1/default/x
+        - ref://secrets-manager.us-south.Default.SM-1/default/y
+        - ref://secrets-manager.us-south.Default.SM-1/default/z
+        variables:
+        - ref://projects.us-south.Default.my-proj/my-org/public-ingress-url
+    
+    - name: Do some work using resolved secrets
+      env:
+        X: ${{ steps.resolver-step.outputs.secrets.X }}
+        Y: ${{ steps.resolver-step.outputs.secrets.Y }}
+      run: |
+        echo X=$X Y=$Y Z=$Z # Z would _not_ be available in this step as it hasn't been explicitly set in env, X and Y would have ::add-mask:: so would be hidden from logs
+    
+    - name: Do some work using resolved variables
+      env:
+        PUBLIC_INGRESS_URL: ${{ steps.resolver-step.outputs.variables.PUBLIC_INGRESS_URL }}
+      run: |
+        echo PUBLIC_INGRESS_URL=$PUBLIC_INGRESS_URL # variable is freely displayed in the logs without a mask
